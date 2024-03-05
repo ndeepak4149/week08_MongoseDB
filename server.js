@@ -1,63 +1,61 @@
-const express = require('express');
-const cors = require('cors');
-const app = express();
-const port = 3000;
+const expressFramework = require('express');
+const corsPolicy = require('cors');
+const server = expressFramework();
+const serverPort = 3000;
 
-const mongoose = require("mongoose");
+const mongoDB = require("mongoose");
 
-const budgetSchema = require("./models/budget_schema");
+const financialPlanSchema = require("./models/budget_schema");
 
+const databaseURL = process.env.DB_URI || 'mongodb://127.0.0.1:27017/my_finances';
 
-const url = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/personal_budget';
-
-
-const connectionOptions = {
+const mongoOptions = {
     useNewUrlParser: true,
     useUnifiedTopology: true
 };
 
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+server.use(corsPolicy());
+server.use(expressFramework.json());
+server.use(expressFramework.urlencoded({ extended: true }));
 
-// Error Handling Middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send('Something went wrong!');
+// Middleware for error handling
+server.use((error, req, response, next) => {
+    console.error(error.stack);
+    response.status(500).send('An error occurred!');
 });
 
-app.get('/budget', async (req, res) => {
+server.get('/budget', async (req, response) => {
     try {
-        const connection = await mongoose.connect(url, connectionOptions);
-        console.log("Connected to the database");
+        await mongoDB.connect(databaseURL, mongoOptions);
+        console.log("Successfully connected to the database");
         
-        const data = await budgetSchema.find({});
-        res.send(data);
-    } catch (error) {
-        console.error(error);
-        res.status(500).send(error.message);
+        const financialData = await financialPlanSchema.find({});
+        response.send(financialData);
+    } catch (err) {
+        console.error(err);
+        response.status(500).send(err.message);
     } finally {
-        mongoose.connection.close();
+        mongoDB.connection.close();
     }
 });
 
-app.post("/insertBudget", async (req, res) => {
+server.post("/budget", async (req, response) => {
     try {
-        const connection = await mongoose.connect(url, connectionOptions);
-        console.log("Connected to the database to insert data");
+        await mongoDB.connect(databaseURL, mongoOptions);
+        console.log("Database connection established for data insertion");
 
-        const newData = new budgetSchema(req.body);
-        await newData.save();
+        const planData = new financialPlanSchema(req.body);
+        await planData.save();
 
-        res.send("Data inserted into the database successfully");
-    } catch (error) {
-        console.error(error);
-        res.status(500).send(error.message);
+        response.send("Financial plan added successfully to the database");
+    } catch (err) {
+        console.error(err);
+        response.status(500).send(err.message);
     } finally {
-        mongoose.connection.close();
+        mongoDB.connection.close();
     }
 });
 
-app.listen(port, () => {
-    console.log(`Example app listening at http://localhost:${port}`);
+server.listen(serverPort, () => {
+    console.log(`Finance app running at http://localhost:${serverPort}`);
 });
